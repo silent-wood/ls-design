@@ -1,0 +1,102 @@
+.ls-demo {
+  min-block-size: 100vh;
+  padding: var(--ls-padding-xl);
+  background: var(--ls-color-bg-layout);
+  color: var(--ls-color-text);
+}
+
+.ls-demo__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-margin-md);
+  padding-block-end: var(--ls-padding-lg);
+  margin-block-end: var(--ls-margin-lg);
+  border-block-end: 1px solid var(--ls-color-split);
+}
+
+.ls-demo__title {
+  margin: 0;
+  font-size: var(--ls-font-size-heading-3);
+  line-height: var(--ls-line-height-heading-3);
+  font-weight: 600;
+}
+
+.ls-demo__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-margin-sm);
+  margin-inline-start: auto;
+}
+
+.ls-demo__section {
+  margin-block-end: var(--ls-margin-xl);
+}
+
+.ls-demo__section-title {
+  margin: 0 0 var(--ls-margin-md);
+  font-size: var(--ls-font-size-lg);
+  font-weight: 600;
+  color: var(--ls-color-text-heading);
+}
+
+.ls-demo__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-margin-md);
+  padding: var(--ls-padding-lg);
+  background: var(--ls-color-bg-container);
+  border: 1px solid var(--ls-color-border-secondary);
+  border-radius: var(--ls-radius-lg);
+}
+
+.ls-demo__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-margin-sm);
+}
+
+.ls-demo__row-label {
+  inline-size: 6em;
+  flex: none;
+  font-size: var(--ls-font-size-sm);
+  color: var(--ls-color-text-tertiary);
+}
+
+.ls-demo__hint {
+  font-size: var(--ls-font-size-sm);
+  color: var(--ls-color-text-tertiary);
+}
+
+/* 色阶可视化 */
+.ls-demo__palette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-margin-xs);
+}
+
+.ls-demo__palette-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-margin-xs);
+}
+
+.ls-demo__palette-swatch {
+  inline-size: var(--ls-size-lg);
+  block-size: var(--ls-size-lg);
+  border-radius: var(--ls-radius-xs);
+  border: 1px solid var(--ls-color-border-secondary);
+}
+
+/* 幽灵按钮需要彩色底才能看出效果 */
+.ls-demo__brand-surface {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-margin-sm);
+  padding: var(--ls-padding-lg);
+  background: var(--ls-color-primary);
+  border-radius: var(--ls-radius-lg);
+}

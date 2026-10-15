@@ -18,7 +18,14 @@
 1. **LESS 边界**：LESS 只用于 mixin、嵌套、结构组织；禁止用 LESS 变量承载颜色/圆角/字号等主题值。主题一律走 CSS 变量，保证运行时切换能力。
 2. **命名空间**：包名 `ls-design`；类名 `ls-`；CSS 变量 `--ls-`；LESS 变量 `@ls-`。
 3. **令牌三层**：基础令牌（色板/尺寸/动效）→ 语义令牌（按用途命名）→ 组件令牌（组件私有，引用语义令牌）。组件样式只允许消费 `var(--ls-*)`，禁止硬编码 hex。
-4. **令牌成对声明**：LESS 变量与 CSS 变量通过 `.var(@name, @value)` mixin 成对产出，杜绝两份映射漂移。
+4. ~~**令牌成对声明**：LESS 变量与 CSS 变量通过 `.var(@name, @value)` mixin 成对产出。~~
+   ❌ **2026-10-15 实测推翻**：LESS 的 mixin 内变量定义**不会外泄到兄弟作用域**，同一作用域内还要求调用早于使用。实测：
+   ```less
+   .var(@n; @v) { --ls-@{n}: @v; @ls-@{n}: @v; }
+   .a { .var(color-text; rgba(0,0,0,.88)); }
+   .b { color: @ls-color-text; }   // ✗ variable @ls-color-text is undefined
+   ```
+   修正后的约定：**令牌的唯一载体是 CSS 变量**。`.var(@name; @value)` mixin 只产出 `--ls-@{name}`（参数分隔符必须是 `;`，值里含逗号时会与参数分隔冲突）。组件里的编译期算术一律走 `calc()` 组合 CSS 变量，例：`paddingInline = calc(var(--ls-padding-content-horizontal) - var(--ls-line-width))`。附带好处：值只在运行时解析，天然跟随主题与品牌色，不需要为"换主题重算"写第二套逻辑。
 5. **主题切换三个轴**：`data-ls-theme`（light/dark/system）、内联 `--ls-color-primary`（品牌色）、`data-ls-density`（default/compact）。
 6. **中性文本用 `rgba(0,0,0,α)` 而非灰色 hex**（α 阶梯 0.88 / 0.65 / 0.45 / 0.25），理由是叠加性——透明黑落在着色背景上能自然融合。
 7. **包管理器统一 pnpm**（本机 11.15.0），禁止混入 `package-lock.json`。`react`/`react-dom` 归 `peerDependencies`。`shamefully-hoist=false` 保持严格布局——未声明的依赖必须在本地就失败，这是发布质量的前置防线。

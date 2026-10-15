@@ -1,0 +1,19 @@
+/**
+ * 样式总入口
+ *
+ * 这是唯一需要被 `import` 一次的文件（由 src/index.ts 副作用导入），
+ * 组件自身的 .less 由组件模块各自导入，最终在构建时被合并成单份 dist/ls-design.css。
+ *
+ * ⚠️ 下面四行的顺序是有约束的，不要重排：
+ *   1. palette 先于 alias —— alias 用 var(--ls-primary-N) 引用色阶。
+ *      虽然 CSS 变量在计算值阶段解析、理论顺序无关，但保持「定义在引用之前」
+ *      能让产出 CSS 的阅读顺序与依赖方向一致，排查问题时可读性差别很大。
+ *   2. seed / alias 先于 base —— base 里的 color-scheme 规则面向的是最终主题值。
+ *   3. mixins 不在这里导入 —— 它由 vite.config.ts 的 additionalData 以
+ *      (reference) 注入到每个 .less，在这里再导一次会产生重复定义。
+ */
+
+@import './tokens/palette.less';
+@import './tokens/seed.less';
+@import './tokens/alias.less';
+@import './base.less';

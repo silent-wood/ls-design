@@ -1,0 +1,39 @@
+/**
+ * 基线样式
+ *
+ * 定位：组件库必须自带的最小全局修正。刻意保持极窄 —— 只放「不放就会渲染错」
+ * 的规则，不放字体、颜色、间距之类的「审美型」全局样式。
+ *
+ * 为什么只有 box-sizing 一条是「必须」的：
+ *   所有 antd 系控件的尺寸都按 border-box 计算（height: 32px 含 1px 边框）。
+ *   宿主若不 reset，默认 content-box 会让每个控件高 2px，
+ *   「像素级对齐」从第一眼就崩。antd 自己在 reset.css 里同样全局声明了它。
+ *
+ * 有意省略的部分与原因：
+ *   · body 的字体 / 字号 / 颜色 —— 属于宿主的排版决策，组件库越权会引发意外。
+ *     需要它的场景（本仓库的演示页、Storybook）各自在本地补。
+ *   · margin 归零、列表样式归零 —— 同属布局层，留给宿主。
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/**
+ * 让原生 UI 跟随主题：滚动条、<input> 的默认外观、日期选择器、自动填充底色
+ * 都由 color-scheme 决定。缺了这条，暗色页面会滚出一条亮色滚动条。
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html[data-ls-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-ls-theme='dark'] {
+  color-scheme: dark;
+}

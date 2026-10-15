@@ -1,0 +1,565 @@
+/**
+ * Button 样式
+ *
+ * ── 与 antd 6.6.6 的对齐方式 ─────────────────────────────────────────────
+ * 不是「照着截图调」，而是逐条移植 antd 的样式源码：
+ *   node_modules/antd/lib/button/style/index.js     → 基础 / 尺寸 / 形状 / block
+ *   node_modules/antd/lib/button/style/variant.js   → 变体 / 语义色 / 状态
+ *   node_modules/antd/lib/button/style/token.js     → 组件令牌的推导公式
+ *
+ * ── 移植时做的唯一结构性改动 ────────────────────────────────────────────
+ * antd 用 cssinjs 在构建期把 token 值拼成字面量写进 CSS；我们必须在运行时换主题，
+ * 所以把 antd 的 `varRef('xxx')` 一对一翻译成 CSS 自定义属性 --ls-btn-xxx。
+ *
+ * 关键收益是「组合爆炸被变量吸收了」：6 种变体 × 3 种语义色 = 18 种外观，
+ * 但只需 3 个变体块 + 3 个色块；组合由 CSS 变量的层叠天然完成。
+ *
+ * ── 四处有意保留的差异（都写在对应位置旁） ──────────────────────────────
+ * 1. 变量初值取「default + outlined」的语义值，而不是 antd 的 #000 / #ddd 占位符。
+ * 2. 跳过 antd 里三个「同名等价 / 从未被读取」的中间变量（见对应注释）。
+ * 3. 禁用态的 border-color 直接写语义令牌，不绕中间变量。
+ * 4. loading 图标的收放用 CSS transition + 一个 rAF 实现，不引 rc-motion。
+ */
+
+/**
+ * 三档尺寸的共同骨架。
+ *
+ * 抽成 mixin 的理由：「三档尺寸」与「形状的尺寸基准」是同一个决策的两面 ——
+ * 圆形按钮的直径、胶囊按钮的圆角半径都等于控件高度。逐档手写必然漏改其一。
+ *
+ * ⚠️ 参数用 `;` 分隔：值里有逗号（calc、rgba）时用逗号会被 LESS 当作多个参数。
+ */
+.btn-size(@height; @font-size; @padding-inline; @radius) {
+  height: @height;
+  font-size: @font-size;
+  padding: 0 @padding-inline;
+  border-radius: @radius;
+
+  /* 纯图标按钮：宽高相等成正方形。
+     图标字号用 inherit —— antd 的 onlyIconSize 值就是 'inherit'，
+     即图标跟随按钮字号，不需要为每个尺寸再配一套图标字号。 */
+  &.ls-btn-icon-only {
+    width: @height;
+
+    .ls-icon {
+      font-size: inherit;
+    }
+  }
+
+  /* 直径以控件高度为准，必须逐档重算 */
+  &.ls-btn-circle {
+    min-width: @height;
+  }
+
+  /* 胶囊：圆角半径取整个高度（远大于一半，因此必为胶囊） */
+  &.ls-btn-round {
+    border-radius: @height;
+
+    &:not(.ls-btn-icon-only) {
+      padding-inline: @padding-inline;
+    }
+  }
+}
+
+.ls-btn {
+  /* ══════════════════════════════════════════════════════════════════════
+   * ① 组件令牌层（Button 私有）
+   *
+   * 按项目约定这是第三层令牌：只引用第二层语义令牌，不被其他组件引用。
+   * 放在组件目录而非 tokens/ 下，理由是「组件私有」——
+   * 调 Button 的内边距不该需要翻出组件目录去找。
+   * ══════════════════════════════════════════════════════════════════════════ */
+
+  /* 水平内边距 = 内容区内边距 - 线宽（antd: paddingContentHorizontal - lineWidth）。
+     用 calc 而不是算好 15px：紧凑密度下 --ls-padding-content-horizontal 会变成
+     12px，这里必须跟着变，写死就失去了密度轴。 */
+  --ls-btn-padding-inline: calc(var(--ls-padding-content-horizontal) - var(--ls-line-width));
+  /* 小号是特例：antd 用的是字面量 8 而非令牌，即它不随密度变化。
+     --ls-padding-xs 恰好等于 8 且不被紧凑密度覆盖，用令牌表达语义更清楚。 */
+  --ls-btn-padding-inline-sm: calc(var(--ls-padding-xs) - var(--ls-line-width));
+  --ls-btn-padding-inline-lg: calc(var(--ls-padding-content-horizontal) - var(--ls-line-width));
+
+  /* 图标与文字的间距（antd: iconGap = marginXS = 8） */
+  --ls-btn-icon-gap: var(--ls-margin-xs);
+  --ls-btn-font-weight: 400;
+
+  /* antd 用 controlOutlineWidth(=2px) 作纵向偏移而非手写 2px —— 保留这个间接层 */
+  --ls-btn-shadow-default: 0 var(--ls-control-outline-width) 0 var(--ls-color-fill-quaternary);
+  /* --ls-control-outline 由主题层按品牌色重算（见 src/utils/color.ts），
+     所以换品牌色时这个阴影会跟着变。 */
+  --ls-btn-shadow-primary: 0 var(--ls-control-outline-width) 0 var(--ls-control-outline);
+  --ls-btn-shadow-danger: 0 var(--ls-control-outline-width) 0 var(--ls-color-error-outline);
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ② 语义槽位：三组变量
+   *
+   * 初值等价于 color="default" variant="outlined"，因此手写一个裸 .ls-btn
+   * 也能得到合理外观。（antd 此处是 #000 / #ddd 占位符，只在 JS 侧被覆盖，
+   * 手写 HTML 会呈现黑边黑底 —— 这是差异 1。）
+   *
+   * 分两层是刻意的：
+   *   color-*         由「语义色」块设置（default / primary / danger）
+   *   border/text/bg  由「变体」块把 color-* 映射上来
+   * 于是新增一个语义色只需写一个色块，新增一个变体只需写一个变体块。
+   * ══════════════════════════════════════════════════════════════════════════ */
+  --ls-btn-color-base: var(--ls-color-border);
+  --ls-btn-color-hover: var(--ls-color-primary-hover);
+  --ls-btn-color-active: var(--ls-color-primary-active);
+  --ls-btn-color-light: var(--ls-color-fill-tertiary);
+  --ls-btn-color-light-hover: var(--ls-color-fill-secondary);
+  --ls-btn-color-light-active: var(--ls-color-fill);
+  --ls-btn-solid-bg-color: var(--ls-color-bg-solid);
+  --ls-btn-solid-bg-color-hover: var(--ls-color-bg-solid-hover);
+  --ls-btn-solid-bg-color-active: var(--ls-color-bg-solid-active);
+  --ls-btn-shadow: none;
+
+  --ls-btn-border-width: var(--ls-line-width);
+  --ls-btn-border-style: solid;
+  --ls-btn-border-color: var(--ls-color-border);
+  --ls-btn-border-color-hover: var(--ls-color-primary-hover);
+  --ls-btn-border-color-active: var(--ls-color-primary-active);
+  --ls-btn-text-color: var(--ls-color-text);
+  --ls-btn-text-color-hover: var(--ls-color-primary-hover);
+  --ls-btn-text-color-active: var(--ls-color-primary-active);
+  --ls-btn-bg-color: var(--ls-color-bg-container);
+  --ls-btn-bg-color-hover: var(--ls-color-bg-container);
+  --ls-btn-bg-color-active: var(--ls-color-bg-container);
+  --ls-btn-bg-color-disabled: var(--ls-color-bg-container-disabled);
+  /* 描边 / 虚线变体的底色槽位。单列一个变量是因为变体块要引用它，
+     而 bg-color 本身在实心/填充变体里指的是别的意思。 */
+  --ls-btn-bg-color-container: var(--ls-color-bg-container);
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ③ 基础
+   * ══════════════════════════════════════════════════════════════════════════ */
+  .component-root();
+
+  outline: none;
+  position: relative;
+  display: inline-flex;
+  gap: var(--ls-btn-icon-gap);
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--ls-btn-font-weight);
+  white-space: nowrap;
+  text-align: center;
+  /* 关掉 UA 可能带上的背景图，避免与底色语义打架 */
+  background-image: none;
+  cursor: pointer;
+  transition: all var(--ls-motion-duration-mid) var(--ls-motion-ease-in-out);
+  user-select: none;
+  /* 触屏上双指缩放会与连点冲突；manipulation 关掉双指手势、保留连点 */
+  touch-action: manipulation;
+
+  /* 禁用时子元素也要失活。禁用按钮里的图标若还能响应指针，会给出「还能按」的错误暗示。 */
+  &:disabled > * {
+    pointer-events: none;
+  }
+
+  /* antd 的 resetIcon()：svg 是行内元素，按文字基线对齐会因字体描述符
+     在底部多出几像素空隙。 */
+  .ls-btn-icon > svg {
+    display: inline-block;
+    vertical-align: inherit;
+  }
+
+  .ls-btn-icon {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* 按钮里包链接时颜色跟随按钮文字色（含 hover / disabled） */
+  > a {
+    color: currentColor;
+  }
+
+  /* 键盘焦点环。用 :focus-visible 而非 :focus —— 鼠标点击不该出现焦点环，
+     这是 a11y 基线的要求，也是 antd 的行为。 */
+  &:not(:disabled):not(.ls-btn-disabled) {
+    &:focus-visible {
+      .focus-ring();
+    }
+  }
+
+  /* ── 两汉字字距补偿 ─────────────────────────────────────────────────
+     「确定」这类两汉字按钮，两个方块字紧挨着会显得比三四个字的按钮更拥挤。
+     antd 的做法是插入一个空格并把字距拉到 0.34em —— 视觉呼吸感与多字按钮一致；
+     再用负 margin 把末位偏移收回，使按钮宽度仍是「两字宽度」而不是「两字+空格」。 */
+  &.ls-btn-two-chinese-chars::first-letter {
+    letter-spacing: 0.34em;
+  }
+
+  &.ls-btn-two-chinese-chars > *:not(.ls-icon) {
+    margin-inline-end: -0.34em;
+    letter-spacing: 0.34em;
+  }
+
+  /* ── 纯图标按钮 ───────────────────────────────────────────────────── */
+  &.ls-btn-icon-only {
+    padding-inline: 0;
+  }
+
+  /* ── 加载态 ───────────────────────────────────────────────────────── */
+  &.ls-btn-loading {
+    opacity: var(--ls-opacity-loading);
+    cursor: default;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ④ 尺寸（默认档）
+   * ══════════════════════════════════════════════════════════════════════════ */
+  .btn-size(
+    var(--ls-control-height);
+    var(--ls-font-size);
+    var(--ls-btn-padding-inline);
+    var(--ls-radius)
+  );
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ⑤ 形状
+   * 只放与尺寸无关的部分；min-width / border-radius 的基准是控件高度，
+   * 所以按尺寸重算，见 .btn-size()。
+   * ══════════════════════════════════════════════════════════════════════════ */
+  &.ls-btn-circle {
+    padding-inline: 0;
+    border-radius: 50%;
+  }
+
+  /* 方角：显式归零而不是「不写」—— 尺寸层已经写入 border-radius，
+     不写会被继承下来。 */
+  &.ls-btn-square {
+    border-radius: 0;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ⑥ 描边模板（所有变体共用的外壳）
+   * ══════════════════════════════════════════════════════════════════════════ */
+  border: var(--ls-btn-border-width) var(--ls-btn-border-style) var(--ls-btn-border-color);
+  color: var(--ls-btn-text-color);
+  background-color: var(--ls-btn-bg-color);
+
+  &:not(:disabled):not(.ls-btn-disabled) {
+    &:hover {
+      /* 整体重写 border 简写而非只改 border-color：虚线变体下 border-style
+         必须继续是 dashed，重写简写能保证三个分量始终来自同一组变量。 */
+      border: var(--ls-btn-border-width) var(--ls-btn-border-style) var(--ls-btn-border-color-hover);
+      color: var(--ls-btn-text-color-hover);
+      background-color: var(--ls-btn-bg-color-hover);
+    }
+
+    &:active {
+      border: var(--ls-btn-border-width) var(--ls-btn-border-style) var(--ls-btn-border-color-active);
+      color: var(--ls-btn-text-color-active);
+      background-color: var(--ls-btn-bg-color-active);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ⑦ 变体：把 color-* 槽位映射到 border / text / bg
+   * ══════════════════════════════════════════════════════════════════════════ */
+
+  /* 实心 */
+  &.ls-btn-variant-solid {
+    --ls-btn-solid-bg-color: var(--ls-btn-color-base);
+    --ls-btn-solid-bg-color-hover: var(--ls-btn-color-hover);
+    --ls-btn-solid-bg-color-active: var(--ls-btn-color-active);
+    --ls-btn-border-color: transparent;
+    --ls-btn-text-color: var(--ls-color-text-light-solid);
+    --ls-btn-bg-color: var(--ls-btn-solid-bg-color);
+    --ls-btn-bg-color-hover: var(--ls-btn-solid-bg-color-hover);
+    --ls-btn-bg-color-active: var(--ls-btn-solid-bg-color-active);
+
+    box-shadow: var(--ls-btn-shadow);
+  }
+
+  /* 描边 + 虚线：共用一套映射，虚线只多改 border-style */
+  &.ls-btn-variant-outlined,
+  &.ls-btn-variant-dashed {
+    --ls-btn-border-color: var(--ls-btn-color-base);
+    --ls-btn-border-color-hover: var(--ls-btn-color-hover);
+    --ls-btn-border-color-active: var(--ls-btn-color-active);
+    --ls-btn-bg-color: var(--ls-btn-bg-color-container);
+    --ls-btn-text-color: var(--ls-btn-color-base);
+    --ls-btn-text-color-hover: var(--ls-btn-color-hover);
+    --ls-btn-text-color-active: var(--ls-btn-color-active);
+
+    box-shadow: var(--ls-btn-shadow);
+  }
+
+  &.ls-btn-variant-dashed {
+    --ls-btn-border-style: dashed;
+    /* 差异 2：antd 为虚线单独维护 dashedBgDisabled，但它与 defaultBgDisabled
+       取值完全相同（都是 colorBgContainerDisabled），故不复制这个空转的间接层。 */
+  }
+
+  /* 浅底填充 */
+  &.ls-btn-variant-filled {
+    --ls-btn-border-color: transparent;
+    --ls-btn-text-color: var(--ls-btn-color-base);
+    --ls-btn-bg-color: var(--ls-btn-color-light);
+    --ls-btn-bg-color-hover: var(--ls-btn-color-light-hover);
+    --ls-btn-bg-color-active: var(--ls-btn-color-light-active);
+    /* 有意不给 box-shadow：antd 只在 solid / outlined / dashed 上投射阴影，
+       浅底按钮再叠一层 2px 阴影会显脏。 */
+  }
+
+  /* 文字 + 链接：无边框无底 */
+  &.ls-btn-variant-text,
+  &.ls-btn-variant-link {
+    --ls-btn-border-color: transparent;
+    --ls-btn-text-color: var(--ls-btn-color-base);
+    --ls-btn-text-color-hover: var(--ls-btn-color-hover);
+    --ls-btn-text-color-active: var(--ls-btn-color-active);
+    --ls-btn-bg-color: transparent;
+    --ls-btn-bg-color-hover: transparent;
+    --ls-btn-bg-color-active: transparent;
+
+    /* 无边框变体禁用时也要保持透明，否则会露出一块默认底色的方块 */
+    &:disabled,
+    &.ls-btn-disabled {
+      background: transparent;
+      border-color: transparent;
+    }
+  }
+
+  &.ls-btn-variant-text {
+    --ls-btn-bg-color-hover: var(--ls-btn-color-light);
+    --ls-btn-bg-color-active: var(--ls-btn-color-light-active);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ⑧ 语义色：只设置 color-* 槽位与阴影
+   *
+   * 顺序必须在变体块之后 —— 变体块里 solid-bg-color 默认取 color-base，
+   * 而 default 色块要把它换成中性实心底色，靠的就是「后来者覆盖」。
+   * ══════════════════════════════════════════════════════════════════════════ */
+
+  /* 链接：color-base 取链接色而非主色 —— 链接 hover 用的是色阶 index 4 而非 5，
+     与主色并不一致（见 tokens/palette.less 的索引对照表）。 */
+  &.ls-btn-variant-link {
+    --ls-btn-color-base: var(--ls-color-link);
+    --ls-btn-color-hover: var(--ls-color-link-hover);
+    --ls-btn-color-active: var(--ls-color-link-active);
+    --ls-btn-bg-color-hover: transparent;
+  }
+
+  /* 主色 */
+  &.ls-btn-color-primary {
+    --ls-btn-color-base: var(--ls-color-primary);
+    --ls-btn-color-hover: var(--ls-color-primary-hover);
+    --ls-btn-color-active: var(--ls-color-primary-active);
+    --ls-btn-color-light: var(--ls-color-primary-bg);
+    --ls-btn-color-light-hover: var(--ls-color-primary-bg-hover);
+    --ls-btn-color-light-active: var(--ls-color-primary-border);
+    --ls-btn-shadow: var(--ls-btn-shadow-primary);
+
+    &.ls-btn-variant-solid {
+      /* hover / active 只让底色变化，文字保持白 */
+      --ls-btn-text-color: var(--ls-color-text-light-solid);
+      --ls-btn-text-color-hover: var(--ls-btn-text-color);
+      --ls-btn-text-color-active: var(--ls-btn-text-color);
+    }
+  }
+
+  /* 危险 */
+  &.ls-btn-color-dangerous {
+    --ls-btn-color-base: var(--ls-color-error);
+    --ls-btn-color-hover: var(--ls-color-error-hover);
+    --ls-btn-color-active: var(--ls-color-error-active);
+    --ls-btn-color-light: var(--ls-color-error-bg);
+    /* 这一格与直觉不符要特别说明：填充态的危险 hover 用的是
+       colorErrorBgFilledHover，不是 colorErrorBgHover ——
+       antd 为「实心按钮的 hover 底」单独开了一个更深的色，两者不同名也不同值。 */
+    --ls-btn-color-light-hover: var(--ls-color-error-bg-filled-hover);
+    --ls-btn-color-light-active: var(--ls-color-error-bg-active);
+    --ls-btn-shadow: var(--ls-btn-shadow-danger);
+
+    &.ls-btn-variant-solid {
+      --ls-btn-text-color: var(--ls-color-text-light-solid);
+      --ls-btn-text-color-hover: var(--ls-btn-text-color);
+      --ls-btn-text-color-active: var(--ls-btn-text-color);
+    }
+  }
+
+  /* 默认（中性） */
+  &.ls-btn-color-default {
+    --ls-btn-solid-bg-color: var(--ls-color-bg-solid);
+    --ls-btn-solid-bg-color-hover: var(--ls-color-bg-solid-hover);
+    --ls-btn-solid-bg-color-active: var(--ls-color-bg-solid-active);
+    --ls-btn-color-base: var(--ls-color-border);
+    --ls-btn-color-hover: var(--ls-color-primary-hover);
+    --ls-btn-color-active: var(--ls-color-primary-active);
+    --ls-btn-color-light: var(--ls-color-fill-tertiary);
+    --ls-btn-color-light-hover: var(--ls-color-fill-secondary);
+    --ls-btn-color-light-active: var(--ls-color-fill);
+    --ls-btn-text-color: var(--ls-color-text);
+    --ls-btn-text-color-hover: var(--ls-color-primary-hover);
+    --ls-btn-text-color-active: var(--ls-color-primary-active);
+    --ls-btn-shadow: var(--ls-btn-shadow-default);
+
+    /* 差异 2：antd 在此处把 bg-color-disabled 重新赋成 defaultBgDisabled，
+       与变量初值 colorBgContainerDisabled 同值，属空转，故省略。 */
+
+    &.ls-btn-variant-solid {
+      /* 中性实心底在暗色下是接近白的亮色，白字会看不见 ——
+         所以文字色取 --ls-color-text-inverse（亮色 #fff / 暗色 #000）。 */
+      --ls-btn-text-color: var(--ls-color-text-inverse);
+      --ls-btn-text-color-hover: var(--ls-btn-text-color);
+      --ls-btn-text-color-active: var(--ls-btn-text-color);
+    }
+
+    /* 填充 / 文字：hover 只改底色，文字色不变 */
+    &.ls-btn-variant-filled,
+    &.ls-btn-variant-text {
+      --ls-btn-text-color-hover: var(--ls-btn-text-color);
+      --ls-btn-text-color-active: var(--ls-btn-text-color);
+    }
+
+    /* 描边 / 虚线：hover 时文字与边框一起转主色，底色保持容器色。
+       （antd 在此重复赋了 bg-color-container = colorBgContainer，与初值同值，
+         属空转，省略。） */
+    &.ls-btn-variant-outlined,
+    &.ls-btn-variant-dashed {
+      --ls-btn-text-color: var(--ls-color-text);
+      --ls-btn-text-color-hover: var(--ls-color-primary-hover);
+      --ls-btn-text-color-active: var(--ls-color-primary-active);
+      --ls-btn-bg-color-hover: var(--ls-color-bg-container);
+      --ls-btn-bg-color-active: var(--ls-color-bg-container);
+    }
+
+    &.ls-btn-variant-text {
+      --ls-btn-text-color: var(--ls-color-text);
+      --ls-btn-text-color-hover: var(--ls-color-text);
+      --ls-btn-text-color-active: var(--ls-color-text);
+      --ls-btn-bg-color-hover: var(--ls-color-fill-tertiary);
+    }
+
+    /* 中性幽灵按钮：文字与边框取容器色，即「比底色亮一档」，
+       这样放在深色横幅上能看出轮廓。 */
+    &.ls-btn-background-ghost {
+      &.ls-btn-variant-outlined,
+      &.ls-btn-variant-dashed {
+        --ls-btn-text-color: var(--ls-color-bg-container);
+        --ls-btn-border-color: var(--ls-color-bg-container);
+      }
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ⑨ 禁用
+   * 直接写语义令牌，不绕中间变量 —— antd 也是这样（它保留了
+   * --btn-border-color-disabled 的赋值却从不读取），跟随其行为而非其代码形状。
+   * ══════════════════════════════════════════════════════════════════════════ */
+  &:disabled,
+  &.ls-btn-disabled {
+    cursor: not-allowed;
+    border-color: var(--ls-color-border-disabled);
+    background: var(--ls-btn-bg-color-disabled);
+    color: var(--ls-color-text-disabled);
+    box-shadow: none;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ⑩ 幽灵
+   * 顺序必须在变体块之后：变体块把 bg-color 指向 bg-color-container，
+   * 幽灵要把它盖成 transparent，靠的就是后来者覆盖。
+   * ══════════════════════════════════════════════════════════════════════════ */
+  &.ls-btn-background-ghost {
+    --ls-btn-bg-color: transparent;
+    --ls-btn-bg-color-hover: transparent;
+    --ls-btn-bg-color-active: transparent;
+    --ls-btn-shadow: none;
+
+    &.ls-btn-variant-outlined,
+    &.ls-btn-variant-dashed {
+      --ls-btn-bg-color-hover: transparent;
+      --ls-btn-bg-color-active: transparent;
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ⑪ 图标在末尾
+   * 用 row-reverse 而不是调换 JSX 顺序：DOM 顺序保持「图标在前」，
+   * 屏幕阅读器不会因为视觉位置改变朗读顺序。
+   * ══════════════════════════════════════════════════════════════════════════ */
+  &.ls-btn-icon-end {
+    flex-direction: row-reverse;
+  }
+
+  /* ── loading 图标的收放 ───────────────────────────────────────────────
+     折叠起点「宽 0 + 透明」，展开终点「宽 1em + 不透明」。
+     两端都是具体长度，width 才能被 transition 动画（auto 不行）。
+     还要额外吃掉 flex 的 gap：宽度归零后 gap 仍会留下 8px 空隙，
+     表现为动画结束时文字位置「跳」一下。 */
+  .ls-btn-loading-icon {
+    opacity: 0;
+    width: 0;
+    transition:
+      width var(--ls-motion-duration-slow) var(--ls-motion-ease-in-out),
+      opacity var(--ls-motion-duration-slow) var(--ls-motion-ease-in-out),
+      margin var(--ls-motion-duration-slow) var(--ls-motion-ease-in-out);
+  }
+
+  .ls-btn-loading-icon-active {
+    opacity: 1;
+    width: 1em;
+  }
+}
+
+/* 折叠态用负 margin 抵掉 gap。方向取决于图标在首还是在尾，所以要分两种。 */
+.ls-btn:not(.ls-btn-icon-end) .ls-btn-loading-icon {
+  margin-inline-end: calc(var(--ls-btn-icon-gap) * -1);
+}
+
+.ls-btn:not(.ls-btn-icon-end) .ls-btn-loading-icon-active {
+  margin-inline-end: 0;
+}
+
+.ls-btn-icon-end .ls-btn-loading-icon {
+  margin-inline-start: calc(var(--ls-btn-icon-gap) * -1);
+}
+
+.ls-btn-icon-end .ls-btn-loading-icon-active {
+  margin-inline-start: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 尺寸
+ *
+ * 顺序要求：必须排在 .ls-btn 的规则之后。选择器特异性相同（都是 0,1,0），
+ * 覆盖靠的就是「后来者胜」。
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* 小号。
+   注意字号取 --ls-font-size 而不是 --ls-font-size-sm：antd 的 contentFontSizeSM
+   就等于 fontSize（14px），小号按钮的文字并不缩小，缩小的只有高度、内边距与圆角。
+   这条很容易被当成 bug 而「修」错。 */
+.ls-btn-sm {
+  .btn-size(
+    var(--ls-control-height-sm);
+    var(--ls-font-size);
+    var(--ls-btn-padding-inline-sm);
+    var(--ls-radius-sm)
+  );
+}
+
+/* 大号 */
+.ls-btn-lg {
+  .btn-size(
+    var(--ls-control-height-lg);
+    var(--ls-font-size-lg);
+    var(--ls-btn-padding-inline-lg);
+    var(--ls-radius-lg)
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 撑满宽度
+ *
+ * 刻意排在尺寸之后：antd 的产物顺序里 block 也在最后，于是
+ * `<Button block size="small" icon={…} />` 这一组合下，block 的宽度会盖过
+ * 纯图标按钮的方形宽度。跟随 antd 的顺序，保证这个边界组合表现一致。
+ * ══════════════════════════════════════════════════════════════════════════ */
+.ls-btn.ls-btn-block {
+  width: 100%;
+}

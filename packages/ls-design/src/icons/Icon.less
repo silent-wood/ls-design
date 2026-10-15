@@ -1,0 +1,56 @@
+/**
+ * 图标基元样式
+ *
+ * 逐项对齐 antd 的 `.anticon`（来自 @ant-design/icons 的 iconStyles）。
+ * 这些值不是审美偏好，而是「图标与文字混排时基线对不对」的工程结论，
+ * 所以照抄；唯一改动是把类名换成 ls- 命名空间、把 keyframes 换名以免与 antd 撞。
+ */
+
+.ls-icon {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  font-style: normal;
+  line-height: 0;
+  text-align: center;
+  text-transform: none;
+  // 与汉字基线对齐的偏移。不是垂直居中 —— 汉字的中宫偏上，
+  // 图标居中反而会显得低，-0.125em 是 CSS 图标对齐的通用经验值。
+  vertical-align: -0.125em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  > * {
+    line-height: 1;
+  }
+
+  svg {
+    display: inline-block;
+    vertical-align: inherit;
+  }
+
+  // 图标不承载 ::before 内容，显式关掉以免宿主站点给 span 加了伪元素样式。
+  &::before {
+    display: none;
+  }
+
+  &[tabindex] {
+    cursor: pointer;
+  }
+}
+
+/**
+ * 旋转。名字没沿用 antd 的 loadingCircle ——
+ * 同一页面同时加载 antd 与本库时，同名 keyframes 会互相覆盖
+ * （虽然当前定义相同，但将来任一方调整都会影响另一方，属于不该存在的耦合）。
+ */
+.ls-icon-spin {
+  animation: ls-loading-circle 1s infinite linear;
+}
+
+@keyframes ls-loading-circle {
+  100% {
+    transform: rotate(360deg);
+  }
+}

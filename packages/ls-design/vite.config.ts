@@ -14,8 +14,14 @@ import dts from "vite-plugin-dts";
  * 这样非库模式拿到的是一个完全朴素的配置，两边互不污染。
  */
 
-/** mixin 入口。每个 .less 都会被自动 (reference) 引入它，省去逐文件手写相对路径。 */
-const MIXINS_ENTRY = "mixins/index.less";
+/**
+ * mixin 入口。每个 .less 都会被自动以 (reference) 引入它，省去逐文件手写相对路径。
+ *
+ * ⚠️ 必须是【绝对路径】。LESS 解析 @import 是相对「导入方文件」而不是项目根：
+ *    写成相对路径时，src/icons/Icon.less 会被解析成 src/icons/mixins/index.less，
+ *    报 "wasn't found"，且报错信息里给出的候选路径能直接看出这一点。
+ */
+const MIXINS_ENTRY = fileURLToPath(new URL("./src/styles/mixins/index.less", import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const isLib = mode === "lib";
@@ -61,12 +67,13 @@ export default defineConfig(({ mode }) => {
           javascriptEnabled: true,
 
           // 自动为每个 .less 注入 mixin 入口。两个必须遵守的点：
-          //   1. 用【函数形式】按路径排除 mixins 目录自身
-          //      —— 否则它 import 自己，造成循环导入
+          //   1. 用【函数形式】按路径排除 mixins 文件自身
+          //      —— 否则它 import 自己，造成循环导入。用全等而不是 includes：
+          //      includes('mixins/index.less') 会被任何同名的深层文件误命中。
           //   2. 必须带 (reference)
           //      —— 否则每个组件文件都会把 mixin 里的 CSS 完整重复输出一遍，产物体积翻倍
           additionalData: (content: string, filename: string) =>
-            filename.includes(MIXINS_ENTRY)
+            filename === MIXINS_ENTRY
               ? content
               : `@import (reference) "${MIXINS_ENTRY}";\n${content}`,
         },

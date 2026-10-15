@@ -1,0 +1,75 @@
+/**
+ * 编译期工具（mixin）集合
+ *
+ * ── 为什么单独成目录 ────────────────────────────────────────────────────
+ * vite.config.ts 用 `additionalData` 把这个文件以 `@import (reference)` 注入到
+ * 每一个 .less 的开头，省去逐文件手写相对路径。因此本文件【只能放 mixin】——
+ * 任何裸声明都会被 (reference) 抑制，但一旦哪天 (reference) 被去掉，
+ * 就会被重复输出到每个组件文件里。把 mixin 与样式声明物理隔开是唯一可靠的防线。
+ *
+ * ── 关于「令牌成对声明」的实测结论（2026-10-15） ────────────────────────
+ * 原本设想 `.var(@name, @value)` 同时产出 `--ls-@{name}` 与 `@ls-@{name}`，
+ * 让组件里可以写 @ls-color-text。实测不成立：
+ *
+ *   .var(@n; @v) { --ls-@{n}: @v; @ls-@{n}: @v; }
+ *   .a { .var(color-text; rgba(0,0,0,.88)); }
+ *   .b { color: @ls-color-text; }        // ✗ variable @ls-color-text is undefined
+ *
+ * LESS 的 mixin 内变量定义不会外泄到兄弟作用域，同一作用域内也要求调用早于使用。
+ * 结论：令牌的唯一载体是 CSS 变量；组件里的编译期算术一律走 calc() 组合 CSS 变量
+ * （如 paddingInline = calc(var(--ls-padding-content-horizontal) - var(--ls-line-width))）。
+ * 这条规矩同时也有好处：值只在运行时解析，天然跟随主题与品牌色变化。
+ */
+
+/**
+ * 声明一个令牌（CSS 变量）。只产出变量声明，不产出任何 CSS 规则。
+ *
+ * ⚠️ 参数分隔符必须用 `;` 而不是 `,` —— 值里含逗号时（rgba(0,0,0,.88)、
+ *    字体栈）用逗号分隔会被 LESS 当成多个参数，报参数个数不匹配。
+ */
+.var(@name; @value) {
+  --ls-@{name}: @value;
+}
+
+/**
+ * 统一焦点环。逐值对齐 antd 的 genFocusOutline：
+ *   outline: {lineWidthFocus} solid {colorPrimaryBorder};
+ *   outline-offset: 1px;
+ *   transition: outline-offset 0s, outline 0s;   ← 键盘聚焦瞬间出现，不做渐变
+ *
+ * 挂 `:focus-visible` 而不是 `:focus`：鼠标点击不出现焦点环，
+ * 只有键盘导航出现。这是 a11y 基线的要求，也是 antd 的行为。
+ * （`.focus-ring()` 只出声明，选择器由调用方给。）
+ */
+.focus-ring() {
+  outline: var(--ls-line-width-focus) solid var(--ls-color-primary-border);
+  outline-offset: 1px;
+  transition: outline-offset 0s, outline 0s;
+}
+
+/**
+ * 无障碍隐藏：视觉不可见但屏幕阅读器可读。
+ * 用于纯图标按钮补一段可读文本的场景。
+ */
+.sr-only() {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/**
+ * 组件根节点基线。让每个组件的根元素都带上同样的盒模型与字体继承起点，
+ * 避免逐个组件重复写 `box-sizing` / `font-family`。
+ */
+.component-root() {
+  box-sizing: border-box;
+  font-family: var(--ls-font-family);
+  font-size: var(--ls-font-size);
+  line-height: var(--ls-line-height);
+}

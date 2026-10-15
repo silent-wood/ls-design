@@ -1,0 +1,115 @@
+/**
+ * 基础令牌（seed）—— 与主题无关的原始值
+ *
+ * 由 scripts/gen-antd-tokens.mjs 从 antd@6.6.6 生成，请勿手改。
+ * 重新生成：pnpm tokens
+ *
+ * 本层在亮色 / 暗色 / 任意品牌色下取值都相同，所以不按主题分块。
+ * 语义令牌（alias.less）只引用本层，组件只引用语义令牌。
+ */
+
+:root {
+  /* ── 控件高度 ──────────────────────────────────────────────── */
+  --ls-control-height-xs: 16px;             // controlHeightXS
+  --ls-control-height-sm: 24px;             // controlHeightSM
+  --ls-control-height: 32px;                // controlHeight
+  --ls-control-height-lg: 40px;             // controlHeightLG
+
+  /* ── 尺寸阶梯（sizeUnit 与 sizeStep 均为 4，故全是 4 的倍数） ── */
+  --ls-size-unit: 4px;                      // sizeUnit
+  --ls-size-step: 4px;                      // sizeStep
+  --ls-size-xxs: 4px;                       // sizeXXS
+  --ls-size-xs: 8px;                        // sizeXS
+  --ls-size-sm: 12px;                       // sizeSM
+  --ls-size-md: 16px;                       // size
+  --ls-size-lg: 24px;                       // sizeLG
+  --ls-size-xl: 32px;                       // sizeXL
+  --ls-size-xxl: 48px;                      // sizeXXL
+
+  /* ── 间距阶梯（供组件消费；md 对应 antd 的 padding / margin 本体） ── */
+  --ls-padding-xxs: 4px;                    // paddingXXS
+  --ls-padding-xs: 8px;                     // paddingXS
+  --ls-padding-sm: 12px;                    // paddingSM
+  --ls-padding-md: 16px;                    // padding
+  --ls-padding-lg: 24px;                    // paddingLG
+  --ls-padding-xl: 32px;                    // paddingXL
+  --ls-margin-xxs: 4px;                     // marginXXS
+  --ls-margin-xs: 8px;                      // marginXS
+  --ls-margin-sm: 12px;                     // marginSM
+  --ls-margin-md: 16px;                     // margin
+  --ls-margin-lg: 24px;                     // marginLG
+  --ls-margin-xl: 32px;                     // marginXL
+
+  /* ── 内容区内边距（容器用，非控件用） ──────────────────────── */
+  --ls-padding-content-horizontal: 16px;    // paddingContentHorizontal
+  --ls-padding-content-horizontal-lg: 24px; // paddingContentHorizontalLG
+  --ls-padding-content-vertical: 12px;      // paddingContentVertical
+
+  /* ── 圆角 ──────────────────────────────────────────────────── */
+  --ls-radius-xs: 2px;                      // borderRadiusXS
+  --ls-radius-sm: 4px;                      // borderRadiusSM
+  --ls-radius: 6px;                         // borderRadius
+  --ls-radius-lg: 8px;                      // borderRadiusLG
+
+  /* ── 字体 ──────────────────────────────────────────────────── */
+  --ls-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'; // fontFamily
+  --ls-font-family-code: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; // fontFamilyCode
+
+  /* ── 字号 ──────────────────────────────────────────────────── */
+  --ls-font-size-sm: 12px;                  // fontSizeSM
+  --ls-font-size: 14px;                     // fontSize
+  --ls-font-size-lg: 16px;                  // fontSizeLG
+  --ls-font-size-xl: 20px;                  // fontSizeXL
+  --ls-font-size-heading-1: 38px;           // fontSizeHeading1
+  --ls-font-size-heading-2: 30px;           // fontSizeHeading2
+  --ls-font-size-heading-3: 24px;           // fontSizeHeading3
+  --ls-font-size-heading-4: 20px;           // fontSizeHeading4
+  --ls-font-size-heading-5: 16px;           // fontSizeHeading5
+
+  /* ── 行高（无单位倍数） ────────────────────────────────────── */
+  --ls-line-height-sm: 1.6666666666666667;  // lineHeightSM
+  --ls-line-height: 1.5714285714285714;     // lineHeight
+  --ls-line-height-lg: 1.5;                 // lineHeightLG
+  --ls-line-height-heading-1: 1.2105263157894737; // lineHeightHeading1
+  --ls-line-height-heading-2: 1.2666666666666666; // lineHeightHeading2
+  --ls-line-height-heading-3: 1.3333333333333333; // lineHeightHeading3
+  --ls-line-height-heading-4: 1.4;          // lineHeightHeading4
+  --ls-line-height-heading-5: 1.5;          // lineHeightHeading5
+
+  /* ── 线宽 ──────────────────────────────────────────────────── */
+  --ls-line-width: 1px;                     // lineWidth
+  --ls-line-width-bold: 2px;                // lineWidthBold
+  --ls-line-width-focus: 3px;               // lineWidthFocus
+  --ls-control-outline-width: 2px;          // controlOutlineWidth
+
+  /* ── 动效 ──────────────────────────────────────────────────── */
+  --ls-motion-duration-fast: 0.1s;          // motionDurationFast
+  --ls-motion-duration-mid: 0.2s;           // motionDurationMid
+  --ls-motion-duration-slow: 0.3s;          // motionDurationSlow
+  --ls-motion-ease-out: cubic-bezier(0.215, 0.61, 0.355, 1); // motionEaseOut
+  --ls-motion-ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1); // motionEaseInOut
+  --ls-motion-ease-in-out-circ: cubic-bezier(0.78, 0.14, 0.15, 0.86); // motionEaseInOutCirc
+  --ls-motion-ease-out-back: cubic-bezier(0.12, 0.4, 0.29, 1.46); // motionEaseOutBack
+
+  /* ── 层级与不透明度 ────────────────────────────────────────── */
+  --ls-z-index-popup-base: 1000;            // zIndexPopupBase
+  --ls-opacity-loading: 0.65;               // opacityLoading
+  --ls-opacity-image: 1;                    // opacityImage
+}
+
+/**
+ * 紧凑密度：覆写 seed 层变量，因此所有引用它们的语义令牌与组件自动跟随。
+ * 唯一例外是 Button 的内边距，它在 antd 里是字面量而非令牌派生（见 Button.less）。
+ */
+[data-ls-density='compact'] {
+  --ls-control-height-xs: 14px;             // controlHeightXS
+  --ls-control-height-sm: 21px;             // controlHeightSM
+  --ls-control-height: 28px;                // controlHeight
+  --ls-control-height-lg: 35px;             // controlHeightLG
+  --ls-padding-content-horizontal: 12px;    // paddingContentHorizontal
+  --ls-padding-content-horizontal-lg: 16px; // paddingContentHorizontalLG
+  --ls-padding-content-vertical: 8px;       // paddingContentVertical
+  --ls-font-size: 12px;                     // fontSize
+  --ls-font-size-sm: 10px;                  // fontSizeSM
+  --ls-font-size-lg: 14px;                  // fontSizeLG
+}

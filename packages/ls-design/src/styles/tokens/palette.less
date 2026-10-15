@@ -1,0 +1,57 @@
+/**
+ * 品牌色色阶（10 级）× 亮暗两套
+ *
+ * 由 scripts/gen-antd-tokens.mjs 从 antd@6.6.6 生成，请勿手改。
+ * 重新生成：pnpm tokens
+ *
+ * 这是整个令牌体系里【唯一】会被 JS 在运行时覆盖的一层。
+ * src/theme/ThemeProvider.tsx 用 @ant-design/colors 的 generate() 按当前品牌色
+ * 重新算出两套色阶，以内联变量形式写到 <html> 上（与 data-ls-theme 同元素）。
+ *
+ * 本文件的作用是【首屏兜底】：React 尚未挂载、或用户从未换过品牌色时，
+ * 让页面有颜色可用。取值为 antd@6.6.6 的默认品牌色 #1677ff。
+ *
+ * 契约：JS 只负责 --ls-primary-1..10 这 10 个变量，语义层及以下一个字都不动。
+ *
+ * ── 索引映射（由脚本断言校验，与 antd MapToken 逐项比对）────────
+ * 语义令牌                   亮色   暗色
+ * colorPrimaryBg              1      3
+ * colorPrimaryBgHover         2      4
+ * colorPrimaryBorder          3      3
+ * colorPrimaryBorderHover     4      4
+ * colorPrimaryHover           5      7   ← 暗色反向
+ * colorPrimary                6      6
+ * colorPrimaryActive          7      5   ← 暗色反向
+ *
+ * ⚠️ 暗色色阶是「深 → 浅」排列（1..5 偏暗，6..10 偏亮），
+ *    所以 hover 走高阶、active 走低阶，与亮色完全相反。绝不能套用亮色表。
+ * ⚠️ 暗色下 --ls-primary-6 不等于传入的品牌色（#1677ff → #1668dc），
+ *    这是 antd 算法本身的行为，不是 bug。
+ */
+
+:root,
+[data-ls-theme='light'] {
+  --ls-primary-1: #e6f4ff;
+  --ls-primary-2: #bae0ff;
+  --ls-primary-3: #91caff;
+  --ls-primary-4: #69b1ff;
+  --ls-primary-5: #4096ff;
+  --ls-primary-6: #1677ff;
+  --ls-primary-7: #0958d9;
+  --ls-primary-8: #003eb3;
+  --ls-primary-9: #002c8c;
+  --ls-primary-10: #001d66;
+}
+
+[data-ls-theme='dark'] {
+  --ls-primary-1: #111a2c;
+  --ls-primary-2: #112545;
+  --ls-primary-3: #15325b;
+  --ls-primary-4: #15417e;
+  --ls-primary-5: #1554ad;
+  --ls-primary-6: #1668dc;
+  --ls-primary-7: #3c89e8;
+  --ls-primary-8: #65a9f3;
+  --ls-primary-9: #8dc5f8;
+  --ls-primary-10: #b7dcfa;
+}

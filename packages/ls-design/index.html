@@ -21,6 +21,11 @@
       若在这里调用它，等于把颜色算法搬进阻塞渲染的关键路径。
       正确做法是 ThemeProvider 把算好的亮暗两套色阶一并缓存进 localStorage，
       本脚本只按当前解析出的模式取一套写回 --ls-primary-1..10。
+
+      缓存结构（由 src/theme/ThemeProvider.tsx 写入，两边必须同步改）：
+        { mode, density, primaryColor,
+          brand: { light: { palette: string[10], outline: string },
+                   dark:  { palette: string[10], outline: string } } }
     -->
     <script>
       (function () {
@@ -41,16 +46,21 @@
           el.setAttribute('data-ls-theme', resolved);
           el.setAttribute('data-ls-density', cfg.density || 'default');
 
-          // 让滚动条、表单控件等原生 UI 跟随主题。
+          // 让滚动条、表单控件等原生 UI 跟随主题。base.less 里也有这条，
+          // 这里内联是为了在 CSS 尚未解析时就生效。
           el.style.colorScheme = resolved;
 
-          // 回填缓存的品牌色阶（10 阶）。未命中时留空，
-          // 由 styles/tokens/palette.less 里的默认品牌色静态兜底。
-          var palettes = cfg.palettes || {};
-          var list = palettes[resolved];
-          if (Object.prototype.toString.call(list) === '[object Array]') {
-            for (var i = 0; i < list.length; i++) {
-              el.style.setProperty('--ls-primary-' + (i + 1), list[i]);
+          // 回填缓存的品牌色。未命中时什么都不做，
+          // 由 styles/tokens/palette.less 与 alias.less 的静态值兜底。
+          var brand = cfg.brand && cfg.brand[resolved];
+          if (brand && Object.prototype.toString.call(brand.palette) === '[object Array]') {
+            for (var i = 0; i < brand.palette.length; i++) {
+              el.style.setProperty('--ls-primary-' + (i + 1), brand.palette[i]);
+            }
+            // 主色阴影是色阶的派生值（getAlphaColor），算法不在本脚本里重跑，
+            // 所以必须连它一起缓存 —— 否则换了品牌色时首帧的阴影会是默认蓝色的。
+            if (brand.outline) {
+              el.style.setProperty('--ls-control-outline', brand.outline);
             }
           }
         } catch (e) {
