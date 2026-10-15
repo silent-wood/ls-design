@@ -1,0 +1,67 @@
+<!doctype html>
+<!--
+  data-ls-theme / data-ls-density 必须在这里预置：
+  首帧渲染时 CSS 变量依赖它们定位主题块，缺了会出现一帧无主题的闪烁。
+  下面的内联脚本会按 localStorage 覆盖成用户上次的选择。
+-->
+<html lang="zh-CN" data-ls-theme="light" data-ls-density="default">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ls-design</title>
+
+    <!--
+      ── 防闪屏脚本 ──────────────────────────────────────────────────
+      必须满足三个条件，缺一条就会闪：
+        1. 同步执行（不能加 defer / async）
+        2. 位置在所有 CSS 与模块脚本之前
+        3. 只做「回填」，不做「计算」
+
+      第 3 点最容易写错。色阶由 @ant-design/colors 的 generate() 算出，
+      若在这里调用它，等于把颜色算法搬进阻塞渲染的关键路径。
+      正确做法是 ThemeProvider 把算好的亮暗两套色阶一并缓存进 localStorage，
+      本脚本只按当前解析出的模式取一套写回 --ls-primary-1..10。
+    -->
+    <script>
+      (function () {
+        try {
+          var STORAGE_KEY = 'ls-design-theme';
+          var el = document.documentElement;
+          var cfg = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+          // 模式解析：用户显式选择优先，'system' 时跟随系统。
+          var mode = cfg.mode || 'system';
+          var resolved =
+            mode === 'system'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : mode;
+
+          el.setAttribute('data-ls-theme', resolved);
+          el.setAttribute('data-ls-density', cfg.density || 'default');
+
+          // 让滚动条、表单控件等原生 UI 跟随主题。
+          el.style.colorScheme = resolved;
+
+          // 回填缓存的品牌色阶（10 阶）。未命中时留空，
+          // 由 styles/tokens/palette.less 里的默认品牌色静态兜底。
+          var palettes = cfg.palettes || {};
+          var list = palettes[resolved];
+          if (Object.prototype.toString.call(list) === '[object Array]') {
+            for (var i = 0; i < list.length; i++) {
+              el.style.setProperty('--ls-primary-' + (i + 1), list[i]);
+            }
+          }
+        } catch (e) {
+          // localStorage 被禁用或数据损坏时不阻断渲染，静默用默认主题。
+        }
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

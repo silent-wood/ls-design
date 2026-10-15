@@ -1,0 +1,29 @@
+# ── pnpm workspace 声明 ──────────────────────────────────────────
+# 只有这个文件存在时，pnpm 才把下面 glob 命中的目录当作独立包处理；
+# 没有它，整个仓库就只是一个单包项目。
+
+packages:
+  # 匹配 packages/ 下的直接子目录；子目录里有 package.json 才算一个包
+  - "packages/*"
+  # 阶段 11 上 Rspress 文档站时再放开（它自带 Rsbuild，必须独立成 app）
+  # - "apps/*"
+
+# ── 依赖生命周期脚本白名单 ────────────────────────────────────
+# pnpm 10 起默认禁止所有依赖执行 postinstall 等脚本，
+# 这是 Rspack 供应链投毒事件的直接回应。只有在这里显式放行的依赖才能跑构建脚本。
+# ⚠️ 语法是 map（name: true），不是数组——写成数组不报错，
+#    但 pnpm 会把它改写成 {'0': ...} 占位项，脚本依旧被拦，且无声无息。
+#    字段名是 allowBuilds（不是旧版的 onlyBuiltDependencies）。
+allowBuilds:
+  # esbuild 的 postinstall 负责下载并校验平台对应的二进制，不放行会导致构建报错
+  esbuild: true
+
+# ── 以下由 pnpm 自动维护，不要手工编辑 ────────────────────────
+# ⚠️ pnpm 重写本文件时会改动它自己维护的节点，这些节点上的注释会丢。
+# 所以把注释写在 packages / allowBuilds 附近最安全。
+# minimumReleaseAgeExclude：pnpm 的「发布冷却期」豁免清单。
+# 新发布的包默认会被挡下 `minimumReleaseAge` 指定的时长（防供应链投毒），
+# 这里记录的是安装时已被判定可豁免的条目。
+minimumReleaseAgeExclude:
+  - react-dom@19.3.1
+  - react@19.3.1

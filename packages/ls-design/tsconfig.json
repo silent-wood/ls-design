@@ -1,0 +1,53 @@
+{
+  // tsconfig.json 是 JSONC 格式，TypeScript 原生支持 // 注释，可放心写。
+  "compilerOptions": {
+    /* ── 语言与输出目标 ──────────────────────────────────────── */
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+
+    // bundler 模式：由 Vite 解析依赖，允许省略扩展名、支持 exports 字段。
+    // 这是配合 Vite / Rsbuild 等打包器的推荐值，不要用 node / node16。
+    "moduleResolution": "bundler",
+
+    // React 17+ 的自动 JSX 转换：文件里不需要再 import React。
+    // 与 vite.config.ts 中 rolldownOptions.external 的 'react/jsx-runtime' 呼应。
+    "jsx": "react-jsx",
+
+    /* ── 严格性 ──────────────────────────────────────────────── */
+    // 组件库的类型质量直接决定消费方体验，这几项不建议放宽。
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* ── 互操作 ──────────────────────────────────────────────── */
+    // 每个文件必须作为独立模块编译（Vite 逐文件转译的前提）。
+    // 副作用：类型导入必须写 `import type` 或在 import 语句内用 `type` 修饰符。
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    // 跳过 .d.ts 的类型检查。React / Storybook 这类包的声明经常彼此不一致，
+    // 不跳过会淹没在第三方类型冲突里，收益远小于噪音。
+    "skipLibCheck": true,
+
+    /* ── 输出 ────────────────────────────────────────────────── */
+    // 本包只做类型检查，代码由 Vite 负责转译；声明文件由 vite-plugin-dts 产出。
+    // 它内部会覆盖这个开关，不必担心 noEmit 阻止 d.ts 生成。
+    "noEmit": true,
+
+    /* ── 路径别名 ────────────────────────────────────────────── */
+    // ⚠️ 必须与 vite.config.ts 的 resolve.alias 保持一致。
+    // 两处不一致的典型症状：IDE 能跳转但构建报「找不到模块」。
+    //
+    // ⚠️ 不要写 baseUrl —— TypeScript 7 已将其移除（报 TS5102）。
+    //    TS 4.4 起 paths 就是相对于 tsconfig 所在目录解析的，baseUrl 已无必要。
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+
+  // vite.config.ts 也在内——它用了 node:url，靠 devDependencies 里的 @types/node 提供类型。
+  "include": ["src", ".storybook", "scripts", "vite.config.ts"]
+}
